@@ -1,5 +1,3 @@
-# What changed
-
 Brought this app up to date so it builds and runs on modern
 Android (up to Android 15 - SDK 35), and fixed the bugs found along the way.
 
