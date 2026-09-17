@@ -11,7 +11,7 @@ import androidx.lifecycle.MutableLiveData
  * [isRunning] is for Activities/Fragments.
  */
 object ServiceState {
-    private val _isRunning = MutableLiveData<Boolean>()
+    private val _isRunning = MutableLiveData(false)
 
     val isRunning: LiveData<Boolean> = _isRunning
 

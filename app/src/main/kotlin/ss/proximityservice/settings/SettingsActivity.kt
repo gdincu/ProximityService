@@ -37,9 +37,7 @@ class SettingsActivity : DaggerAppCompatActivity() {
             .get(SettingsViewModel::class.java)
 
         viewModel.serviceState.observe(this, ::updateConditionCard)
-        ServiceState.isRunning.observe(this) { running ->
-            if (running != null) viewModel.updateState(running)
-        }
+        ServiceState.isRunning.observe(this, viewModel::updateState)
         viewModel.alert.observe(this, EventObserver { dialog -> dialog.show(this) })
         viewModel.operationalModeResId.observe(this) { resId ->
             binding.operationalModeSecondaryText.text = getString(resId)
