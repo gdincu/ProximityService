@@ -24,6 +24,14 @@ android {
     testOptions {
         unitTests {
             includeAndroidResources = true
+            all {
+                testLogging {
+                    events 'failed'
+                    exceptionFormat 'full'
+                    showCauses true
+                    showStackTraces true
+                }
+            }
         }
     }
 
@@ -101,6 +109,7 @@ dependencies {
     testImplementation 'androidx.test.ext:junit-ktx:1.2.1'
     testImplementation 'com.google.truth:truth:1.4.4'
     testImplementation 'org.mockito:mockito-core:5.11.0'
+    testImplementation 'org.mockito.kotlin:mockito-kotlin:5.4.0'
     testImplementation 'org.robolectric:robolectric:4.14.1'
 
     androidTestImplementation 'androidx.test:rules:1.6.1'

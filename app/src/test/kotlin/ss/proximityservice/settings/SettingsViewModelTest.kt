@@ -7,6 +7,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.ArgumentCaptor
 import org.mockito.Mockito.*
 import ss.proximityservice.ProximityService
 import ss.proximityservice.R
@@ -169,7 +170,9 @@ class SettingsViewModelTest {
 
         viewModel.operationalModeClick()
 
-        verify(observer).onChanged(any())
+        val captor = ArgumentCaptor.forClass(Event::class.java)
+        verify(observer).onChanged(captor.capture() as Event<Alert>)
+        assertThat(captor.value).isNotNull()
     }
 
     @Test
@@ -180,6 +183,8 @@ class SettingsViewModelTest {
 
         viewModel.notificationBehaviorClick()
 
-        verify(observer).onChanged(any())
+        val captor = ArgumentCaptor.forClass(Event::class.java)
+        verify(observer).onChanged(captor.capture() as Event<Alert>)
+        assertThat(captor.value).isNotNull()
     }
 }
