@@ -91,30 +91,21 @@ class SettingsViewModel @Inject constructor(private val appStorage: AppStorage) 
     fun operationalModeClick() {
         _alert.postValue(Event(object : Alert {
             override fun show(context: Context) {
-                val items = arrayOf(
-                    context.getString(R.string.settings_operational_mode_secondary_default),
-                    context.getString(R.string.settings_operational_mode_secondary_amoled_wakelock),
-                    context.getString(R.string.settings_operational_mode_secondary_amoled_no_wakelock)
-                )
-                val checked = when (appStorage.getInt(OPERATIONAL_MODE, Mode.DEFAULT.ordinal)) {
-                    Mode.AMOLED_WAKELOCK.ordinal -> 1
-                    Mode.AMOLED_NO_WAKELOCK.ordinal -> 2
-                    else -> 0
-                }
                 MaterialAlertDialogBuilder(context, R.style.ThemeOverlay_App_MaterialAlertDialog)
                     .setTitle(R.string.settings_operational_mode_title)
                     .setMessage(R.string.settings_operational_mode_description)
-                    .setSingleChoiceItems(items, checked) { dialog, which ->
-                        val (mode, resId) = when (which) {
-                            1 -> Mode.AMOLED_WAKELOCK.ordinal to R.string.settings_operational_mode_secondary_amoled_wakelock
-                            2 -> Mode.AMOLED_NO_WAKELOCK.ordinal to R.string.settings_operational_mode_secondary_amoled_no_wakelock
-                            else -> Mode.DEFAULT.ordinal to R.string.settings_operational_mode_secondary_default
-                        }
-                        appStorage.put(OPERATIONAL_MODE, mode)
-                        _operationalModeResId.postValue(resId)
-                        dialog.dismiss()
+                    .setPositiveButton(R.string.settings_operational_mode_secondary_default) { _, _ ->
+                        appStorage.put(OPERATIONAL_MODE, Mode.DEFAULT.ordinal)
+                        _operationalModeResId.postValue(R.string.settings_operational_mode_secondary_default)
                     }
-                    .setNegativeButton(android.R.string.cancel, null)
+                    .setNegativeButton(R.string.settings_operational_mode_secondary_amoled_wakelock) { _, _ ->
+                        appStorage.put(OPERATIONAL_MODE, Mode.AMOLED_WAKELOCK.ordinal)
+                        _operationalModeResId.postValue(R.string.settings_operational_mode_secondary_amoled_wakelock)
+                    }
+                    .setNeutralButton(R.string.settings_operational_mode_secondary_amoled_no_wakelock) { _, _ ->
+                        appStorage.put(OPERATIONAL_MODE, Mode.AMOLED_NO_WAKELOCK.ordinal)
+                        _operationalModeResId.postValue(R.string.settings_operational_mode_secondary_amoled_no_wakelock)
+                    }
                     .show()
             }
         }))
@@ -123,24 +114,17 @@ class SettingsViewModel @Inject constructor(private val appStorage: AppStorage) 
     fun notificationBehaviorClick() {
         _alert.postValue(Event(object : Alert {
             override fun show(context: Context) {
-                val items = arrayOf(
-                    context.getString(R.string.dismiss),
-                    context.getString(R.string.retain)
-                )
-                val checked = if (appStorage.getBoolean(NOTIFICATION_DISMISS, true)) 0 else 1
                 MaterialAlertDialogBuilder(context, R.style.ThemeOverlay_App_MaterialAlertDialog)
                     .setTitle(R.string.settings_notification_behavior_title)
                     .setMessage(R.string.settings_notification_behavior_description)
-                    .setSingleChoiceItems(items, checked) { dialog, which ->
-                        val dismiss = which == 0
-                        appStorage.put(NOTIFICATION_DISMISS, dismiss)
-                        _notificationBehaviorResId.postValue(
-                            if (dismiss) R.string.settings_notification_behavior_secondary_dismiss
-                            else R.string.settings_notification_behavior_secondary_retain
-                        )
-                        dialog.dismiss()
+                    .setPositiveButton(R.string.dismiss) { _, _ ->
+                        appStorage.put(NOTIFICATION_DISMISS, true)
+                        _notificationBehaviorResId.postValue(R.string.settings_notification_behavior_secondary_dismiss)
                     }
-                    .setNegativeButton(android.R.string.cancel, null)
+                    .setNegativeButton(R.string.retain) { _, _ ->
+                        appStorage.put(NOTIFICATION_DISMISS, false)
+                        _notificationBehaviorResId.postValue(R.string.settings_notification_behavior_secondary_retain)
+                    }
                     .show()
             }
         }))
