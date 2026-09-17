@@ -10,6 +10,7 @@ import org.junit.Test
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.reset
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import ss.proximityservice.ProximityService
@@ -67,6 +68,7 @@ class SettingsViewModelTest {
         val viewModel = SettingsViewModel(mock())
         val observer: Observer<Boolean> = mock()
         viewModel.serviceState.observeForever(observer)
+        reset(observer)
 
         viewModel.updateState(true)
 
@@ -78,6 +80,7 @@ class SettingsViewModelTest {
         val viewModel = SettingsViewModel(mock())
         val observer: Observer<Boolean> = mock()
         viewModel.serviceState.observeForever(observer)
+        reset(observer)
 
         viewModel.updateState(false)
 
