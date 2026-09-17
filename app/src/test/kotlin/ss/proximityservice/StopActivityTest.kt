@@ -36,10 +36,9 @@ class StopActivityTest {
     private fun nextStartedServiceIntent(): Intent? {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val shadowApp = shadowOf(app)
-        runCatching { shadowApp.nextStartedService }.getOrNull()?.let { return it }
-        runCatching { shadowApp.peekNextStartedService() }.getOrNull()?.let { return it }
-        runCatching { shadowApp.nextStartedForegroundService }.getOrNull()?.let { return it }
-        runCatching { shadowApp.peekNextStartedForegroundService() }.getOrNull()?.let { return it }
+        // startForegroundService() is also recorded as a started service by Robolectric.
+        runCatching<Intent?> { shadowApp.nextStartedService }.getOrNull()?.let { return it }
+        runCatching<Intent?> { shadowApp.peekNextStartedService() }.getOrNull()?.let { return it }
         return null
     }
 }
