@@ -101,7 +101,7 @@ class SettingsViewModel @Inject constructor(private val appStorage: AppStorage) 
                     Mode.AMOLED_NO_WAKELOCK.ordinal -> 2
                     else -> 0
                 }
-                MaterialAlertDialogBuilder(context)
+                MaterialAlertDialogBuilder(context, R.style.ThemeOverlay_App_MaterialAlertDialog)
                     .setTitle(R.string.settings_operational_mode_title)
                     .setMessage(R.string.settings_operational_mode_description)
                     .setSingleChoiceItems(items, checked) { dialog, which ->
@@ -128,7 +128,7 @@ class SettingsViewModel @Inject constructor(private val appStorage: AppStorage) 
                     context.getString(R.string.retain)
                 )
                 val checked = if (appStorage.getBoolean(NOTIFICATION_DISMISS, true)) 0 else 1
-                MaterialAlertDialogBuilder(context)
+                MaterialAlertDialogBuilder(context, R.style.ThemeOverlay_App_MaterialAlertDialog)
                     .setTitle(R.string.settings_notification_behavior_title)
                     .setMessage(R.string.settings_notification_behavior_description)
                     .setSingleChoiceItems(items, checked) { dialog, which ->

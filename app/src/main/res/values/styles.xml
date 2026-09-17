@@ -14,4 +14,6 @@
         <item name="android:windowIsFloating">false</item>
         <item name="android:backgroundDimEnabled">false</item>
     </style>
+    <!-- AppTheme is AppCompat, so Material dialogs need an explicit overlay. -->
+    <style name="ThemeOverlay.App.MaterialAlertDialog" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog" />
 </resources>
