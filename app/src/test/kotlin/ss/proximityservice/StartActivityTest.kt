@@ -21,9 +21,9 @@ class StartActivityTest {
     @Test
     fun `starts ProximityService`() {
         scenarioRule.scenario.onActivity { activity ->
-            val serviceIntent = shadowOf(activity).peekNextStartedService()
-            assertThat(serviceIntent.action).isEqualTo(INTENT_ACTION_START)
-            assertThat(serviceIntent.component?.className).isEqualTo(ProximityService::class.java.canonicalName)
+            val serviceIntent = nextStartedServiceIntent(activity)
+            assertThat(serviceIntent?.action).isEqualTo(INTENT_ACTION_START)
+            assertThat(serviceIntent?.component?.className).isEqualTo(ProximityService::class.java.canonicalName)
         }
     }
 

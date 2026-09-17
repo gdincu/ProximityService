@@ -24,33 +24,49 @@ class ProximityDetectorTest {
 
     @Test
     fun onNear() {
-        proximityDetector.onSensorChanged(mockSensorEvent(0f))
+        proximityDetector.onSensorChanged(mockSensorEvent(value = 0f, maxRange = 8f))
         verify(mockListener, only()).onNear()
     }
 
     @Test
     fun onFar() {
-        proximityDetector.onSensorChanged(mockSensorEvent(8f))
+        proximityDetector.onSensorChanged(mockSensorEvent(value = 8f, maxRange = 8f))
         verify(mockListener, only()).onFar()
     }
 
-    private fun mockSensorEvent(value: Float): SensorEvent {
-        val sensorEvent = mock(SensorEvent::class.java)
+    @Test
+    fun onNear_whenMaxRangeLargerThanThreshold() {
+        // Detector treats < min(max, 8f) as near.
+        proximityDetector.onSensorChanged(mockSensorEvent(value = 5f, maxRange = 10f))
+        verify(mockListener, only()).onNear()
+    }
 
+    @Test
+    fun onFar_whenAtThreshold() {
+        proximityDetector.onSensorChanged(mockSensorEvent(value = 8f, maxRange = 10f))
+        verify(mockListener, only()).onFar()
+    }
+
+    private fun mockSensorEvent(value: Float, maxRange: Float): SensorEvent {
+        val sensorEvent = mock(SensorEvent::class.java)
         try {
             val valuesField = SensorEvent::class.java.getField("values")
             valuesField.isAccessible = true
-            try {
-                valuesField.set(sensorEvent, floatArrayOf(value))
-            } catch (e: IllegalArgumentException) {
-                e.printStackTrace()
-            }
-        } catch (e: NoSuchFieldException) {
-            e.printStackTrace()
+            valuesField.set(sensorEvent, floatArrayOf(value))
+        } catch (e: ReflectiveOperationException) {
+            throw AssertionError("Unable to mock SensorEvent.values", e)
         }
 
-        sensorEvent.sensor = mock(Sensor::class.java)
-        `when`(sensorEvent.sensor.maximumRange).thenReturn(8f)
+        val sensor = mock(Sensor::class.java)
+        `when`(sensor.maximumRange).thenReturn(maxRange)
+        try {
+            val sensorField = SensorEvent::class.java.getField("sensor")
+            sensorField.isAccessible = true
+            sensorField.set(sensorEvent, sensor)
+        } catch (e: ReflectiveOperationException) {
+            // Fall back to direct assignment for Robolectric shadows.
+            sensorEvent.sensor = sensor
+        }
 
         return sensorEvent
     }

@@ -31,4 +31,10 @@
     <string name="screen_off_delay_three">3 seconds</string>
     <string name="open_source_licenses">Open source licenses</string>
     <string name="service_state_notification_channel">Service State</string>
+    <string name="toast_service_started">Proximity Service started</string>
+    <string name="toast_service_already_active">Proximity Service is already active</string>
+    <string name="toast_service_stopped">Proximity Service stopped</string>
+    <string name="toast_wakelock_not_supported">Proximity WakeLock not supported on this device</string>
+    <string name="toast_no_proximity_sensor">No proximity sensor found on this device</string>
+    <string name="toast_amoled_overlay_permission">AMOLED mode requires the permission for drawing over other apps / appear on top to be turned on</string>
 </resources>

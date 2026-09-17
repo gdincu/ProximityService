@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- Required pre-O for TYPE_SYSTEM_ALERT overlay in AMOLED mode. O+ uses TYPE_APPLICATION_OVERLAY. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-feature
         android:name="android.hardware.sensor.proximity"
@@ -19,8 +21,13 @@
         android:supportsRtl="true"
         tools:ignore="GoogleAppIndexingWarning">
 
-        <service android:name=".ProximityService"
-            tools:ignore="ExportedService">
+        <service
+            android:name=".ProximityService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Proximity sensor screen-off control" />
             <intent-filter>
                 <action android:name="ss.proximityservice.START" />
                 <action android:name="ss.proximityservice.STOP" />
@@ -31,6 +38,7 @@
             android:name=".ToggleTileService"
             android:icon="@drawable/ic_screen_lock_portrait"
             android:label="@string/app_name"
+            android:exported="true"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
@@ -41,7 +49,8 @@
             android:name=".settings.SettingsActivity"
             android:label="@string/app_name"
             android:theme="@style/AppTheme"
-            android:launchMode="singleInstance">
+            android:exported="true"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.APPLICATION_PREFERENCES" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -51,7 +60,10 @@
         <activity
             android:name=".StartActivity"
             android:label="@string/launcher_name"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            android:theme="@style/Theme.Translucent"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -63,9 +75,13 @@
 
         <activity
             android:name=".StopActivity"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            android:theme="@style/Theme.Translucent"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
+                <action android:name="ss.proximityservice.STOP" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
 

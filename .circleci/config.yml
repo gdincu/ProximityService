@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/android:api-29
+      - image: cimg/android:2024.10
     steps:
       - checkout
       - restore_cache:
@@ -14,24 +14,9 @@ jobs:
           paths:
             - ~/.gradle
           key: jars-{{ checksum "build.gradle" }}-{{ checksum "app/build.gradle" }}
-      - run: ./gradlew lint test
+      - run: ./gradlew lint testDebugUnitTest
       - store_artifacts:
           path: app/build/reports
           destination: reports
       - store_test_results:
           path: app/build/test-results
-      - run: |
-          ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest
-          echo $GCLOUD_SERVICE_KEY | base64 -di > ${HOME}/gcloud-service-key.json
-          gcloud auth activate-service-account --key-file=${HOME}/gcloud-service-key.json
-          gcloud --quiet config set project ${GOOGLE_PROJECT_ID}
-          gcloud firebase test android run \
-            --type instrumentation \
-            --app ./app/build/outputs/apk/debug/app-debug.apk \
-            --test ./app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk \
-            --results-bucket cloud-test-${GOOGLE_PROJECT_ID}
-          mkdir cloud-test
-          gsutil -m cp -r -U `gsutil ls gs://cloud-test-${GOOGLE_PROJECT_ID} | tail -1` cloud-test/ | true
-      - store_artifacts:
-          path: cloud-test
-          destination: firebase

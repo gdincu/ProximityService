@@ -33,14 +33,15 @@ class NotificationHelper(context: Context) : ContextWrapper(context) {
             .setSmallIcon(R.drawable.ic_screen_lock_portrait)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(getString(R.string.notification_running))
-            .setContentIntent(getActivityIntent<StopActivity>(PendingIntent.FLAG_ONE_SHOT))
+            .setContentIntent(getActivityIntent<StopActivity>(PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE))
             .addAction(
                 R.drawable.ic_settings,
                 getString(R.string.notification_action_settings),
-                getActivityIntent<SettingsActivity>(PendingIntent.FLAG_UPDATE_CURRENT)
+                getActivityIntent<SettingsActivity>(PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             )
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setOngoing(true)
             .build()
     }
 
@@ -49,22 +50,23 @@ class NotificationHelper(context: Context) : ContextWrapper(context) {
             .setSmallIcon(R.drawable.ic_screen_lock_portrait)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(getString(R.string.notification_stopped))
-            .setContentIntent(getActivityIntent<StartActivity>(PendingIntent.FLAG_ONE_SHOT))
+            .setContentIntent(getActivityIntent<StartActivity>(PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE))
             .addAction(
                 R.drawable.ic_settings,
                 getString(R.string.notification_action_settings),
-                getActivityIntent<SettingsActivity>(PendingIntent.FLAG_UPDATE_CURRENT)
+                getActivityIntent<SettingsActivity>(PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             )
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setAutoCancel(true)
             .build()
     }
 
     private inline fun <reified T : Activity> getActivityIntent(flags: Int): PendingIntent {
         return PendingIntent.getActivity(
             baseContext,
-            0,
-            Intent(baseContext, T::class.java).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            T::class.java.hashCode(),
+            Intent(baseContext, T::class.java).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
             flags
         )
     }

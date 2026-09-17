@@ -7,7 +7,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 @Config(sdk = [Build.VERSION_CODES.P])
@@ -20,9 +19,9 @@ class StopActivityTest {
     @Test
     fun `stops ProximityService`() {
         scenarioRule.scenario.onActivity { activity ->
-            val serviceIntent = shadowOf(activity).peekNextStartedService()
-            assertThat(serviceIntent.action).isEqualTo(ProximityService.INTENT_ACTION_STOP)
-            assertThat(serviceIntent.component?.className).isEqualTo(ProximityService::class.java.canonicalName)
+            val serviceIntent = nextStartedServiceIntent(activity)
+            assertThat(serviceIntent?.action).isEqualTo(ProximityService.INTENT_ACTION_STOP)
+            assertThat(serviceIntent?.component?.className).isEqualTo(ProximityService::class.java.canonicalName)
         }
     }
 

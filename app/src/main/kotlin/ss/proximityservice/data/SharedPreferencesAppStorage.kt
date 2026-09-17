@@ -12,54 +12,21 @@ class SharedPreferencesAppStorage(context: Context, name: String? = null) : AppS
         context.getSharedPreferences(name, Context.MODE_PRIVATE)
     }
 
-    override fun getString(key: String, defValue: String?): String? {
-        return preferences.getString(key, defValue)
-    }
-
-    override fun getStringSet(key: String, defValues: Set<String>): Set<String>? {
-        return preferences.getStringSet(key, defValues)?.toSet()
-    }
-
     override fun getInt(key: String, defValue: Int): Int {
         return preferences.getInt(key, defValue)
-    }
-
-    override fun getLong(key: String, defValue: Long): Long {
-        return preferences.getLong(key, defValue)
-    }
-
-    override fun getFloat(key: String, defValue: Float): Float {
-        return preferences.getFloat(key, defValue)
     }
 
     override fun getBoolean(key: String, defValue: Boolean): Boolean {
         return preferences.getBoolean(key, defValue)
     }
 
-    @Suppress("UNCHECKED_CAST")
     override fun <T> put(key: String, value: T) {
+        val editor = preferences.edit()
         when (value) {
-            is String? -> preferences.edit().putString(key, value).apply()
-            is Set<*> -> {
-                if (value.all { it is String }) {
-                    preferences.edit().putStringSet(key, value as Set<String>).apply()
-                } else {
-                    throw IllegalArgumentException("The supplied Set must contain Strings.")
-                }
-            }
-            is Int -> preferences.edit().putInt(key, value).apply()
-            is Long -> preferences.edit().putLong(key, value).apply()
-            is Float -> preferences.edit().putFloat(key, value).apply()
-            is Boolean -> preferences.edit().putBoolean(key, value).apply()
-            else -> throw IllegalArgumentException("The supplied value type is not supported.")
+            is Int -> editor.putInt(key, value)
+            is Boolean -> editor.putBoolean(key, value)
+            else -> throw IllegalArgumentException("Only Int and Boolean are supported.")
         }
-    }
-
-    override fun remove(key: String) {
-        preferences.edit().remove(key).apply()
-    }
-
-    override fun clear() {
-        preferences.edit().clear().apply()
+        editor.apply()
     }
 }

@@ -9,17 +9,21 @@ import android.graphics.PixelFormat
 import android.hardware.Sensor
 import android.hardware.SensorManager
 import android.net.Uri
-import android.os.*
+import android.os.Build
+import android.os.Handler
+import android.os.IBinder
+import android.os.Looper
+import android.os.PowerManager
 import android.provider.Settings
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.Toast
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import dagger.android.DaggerService
 import ss.proximityservice.data.AppStorage
 import ss.proximityservice.data.Mode
 import ss.proximityservice.data.ProximityDetector
+import ss.proximityservice.data.ServiceState
 import ss.proximityservice.settings.NOTIFICATION_DISMISS
 import ss.proximityservice.settings.OPERATIONAL_MODE
 import ss.proximityservice.settings.SCREEN_OFF_DELAY
@@ -38,10 +42,6 @@ class ProximityService : DaggerService(), ProximityDetector.ProximityListener {
         applicationContext.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     }
 
-    private val broadcastManager: LocalBroadcastManager by lazy {
-        LocalBroadcastManager.getInstance(this)
-    }
-
     private var proximityDetector: ProximityDetector? = null
 
     private var overlay: View? = null
@@ -56,20 +56,16 @@ class ProximityService : DaggerService(), ProximityDetector.ProximityListener {
 
     private val proximityWakeLock: PowerManager.WakeLock? by lazy {
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            if (powerManager.isWakeLockLevelSupported(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK)) {
-                powerManager.newWakeLock(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK, TAG)
-            } else {
-                null
-            }
-        } else {
-            // no WakeLock level support checking for api < 21
+        if (powerManager.isWakeLockLevelSupported(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK)) {
             powerManager.newWakeLock(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK, TAG)
+        } else {
+            null
         }
     }
 
-    // using deprecated KeyguardLock as the suggested alternative (WindowManager.LayoutParams flags)
-    // is not suitable for a Service with no user interface
+    // KeyguardLock is deprecated (API 13+) and a no-op on API 26+, kept only for
+    // best-effort legacy behavior on old devices.
+    @Suppress("DEPRECATION")
     private val keyguardLock: KeyguardManager.KeyguardLock by lazy {
         val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
         keyguardManager.newKeyguardLock(TAG)
@@ -82,7 +78,7 @@ class ProximityService : DaggerService(), ProximityDetector.ProximityListener {
     }
 
     private val mainHandler: Handler = Handler(Looper.getMainLooper())
-    private val proximityHandler: Handler = Handler(Looper.myLooper())
+    private val proximityHandler: Handler = Handler(Looper.getMainLooper())
 
     @Inject
     lateinit var appStorage: AppStorage
@@ -92,13 +88,15 @@ class ProximityService : DaggerService(), ProximityDetector.ProximityListener {
 
         proximityDetector = ProximityDetector(this)
         val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY)
-        sensor?.let {
-            sensorManager.registerListener(proximityDetector, it, SensorManager.SENSOR_DELAY_NORMAL)
+        if (sensor != null) {
+            sensorManager.registerListener(proximityDetector, sensor, SensorManager.SENSOR_DELAY_NORMAL)
+        } else {
+            mainHandler.post { toast(getString(R.string.toast_no_proximity_sensor)) }
         }
     }
 
-    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-        when (intent.action) {
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
             INTENT_ACTION_START -> start()
             INTENT_ACTION_STOP -> stop()
         }
@@ -111,7 +109,7 @@ class ProximityService : DaggerService(), ProximityDetector.ProximityListener {
     }
 
     // binding not supported
-    override fun onBind(intent: Intent): IBinder? = null
+    override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onNear() {
         if (isRunning) {
@@ -138,28 +136,33 @@ class ProximityService : DaggerService(), ProximityDetector.ProximityListener {
 
     private fun start() {
         proximityWakeLock?.let {
-            if (it.isHeld or isRunning) {
-                mainHandler.post { toast("Proximity Service is already active") }
+            if (it.isHeld || isRunning) {
+                mainHandler.post { toast(getString(R.string.toast_service_already_active)) }
             } else {
-                mainHandler.post { toast("Proximity Service started") }
+                mainHandler.post { toast(getString(R.string.toast_service_started)) }
                 startForeground(NOTIFICATION_ID, notificationHelper.getRunningNotification())
                 isRunning = true
-                broadcastManager.sendBroadcast(Intent(INTENT_NOTIFY_ACTIVE))
+                ServiceState.setRunning(true)
             }
         } ?: run {
-            mainHandler.post { toast("Proximity WakeLock not supported on this device") }
+            mainHandler.post { toast(getString(R.string.toast_wakelock_not_supported)) }
         }
     }
 
     private fun stop() {
-        mainHandler.post { toast("Proximity Service stopped") }
+        mainHandler.post { toast(getString(R.string.toast_service_stopped)) }
+        proximityHandler.removeCallbacksAndMessages(null)
         updateProximitySensorMode(false)
         isRunning = false
-        broadcastManager.sendBroadcast(Intent(INTENT_NOTIFY_INACTIVE))
+        ServiceState.setRunning(false)
+        stopForeground(true)
         stopSelf()
 
         if (!appStorage.getBoolean(NOTIFICATION_DISMISS, true)) {
             notificationHelper.notify(NOTIFICATION_ID, notificationHelper.getStoppedNotification())
+        } else {
+            // Ensure any stale stopped-notification is cleared when dismissing.
+            stopForeground(true)
         }
     }
 
@@ -175,9 +178,9 @@ class ProximityService : DaggerService(), ProximityDetector.ProximityListener {
     }
 
     private fun updateDefaultMode(on: Boolean) {
-        overlay?.let {
+        // Clean up any AMOLED overlay when switching back to default mode.
+        if (overlay != null) {
             updateAMOLEDMode(false)
-            updateKeyguardMode(true)
         }
         proximityWakeLock?.let { wakeLock ->
             synchronized(wakeLock) {
@@ -188,6 +191,7 @@ class ProximityService : DaggerService(), ProximityDetector.ProximityListener {
                     }
                 } else {
                     if (wakeLock.isHeld) {
+                        @Suppress("DEPRECATION")
                         wakeLock.release()
                         updateKeyguardMode(true)
                     }
@@ -199,6 +203,7 @@ class ProximityService : DaggerService(), ProximityDetector.ProximityListener {
     private fun updateAMOLEDMode(on: Boolean, flags: Int = 0) {
         proximityWakeLock?.let { wakeLock ->
             if (wakeLock.isHeld) {
+                @Suppress("DEPRECATION")
                 wakeLock.release()
                 updateKeyguardMode(true)
             }
@@ -223,18 +228,8 @@ class ProximityService : DaggerService(), ProximityDetector.ProximityListener {
                             WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
                     }
 
-                    // simulate SYSTEM_UI_FLAG_IMMERSIVE_STICKY for devices below API 19
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
-                        overlay?.setOnSystemUiVisibilityChangeListener { visibility ->
-                            if ((visibility and View.SYSTEM_UI_FLAG_FULLSCREEN) == 0) {
-                                proximityHandler.postDelayed({
-                                    overlay?.systemUiVisibility = overlayFlags
-                                }, 2000)
-                            }
-                        }
-                    }
                     windowManager.addView(overlay, params)
-                    updateKeyguardMode(true)
+                    updateKeyguardMode(false)
                 }
             } else {
                 overlay?.let {
@@ -244,12 +239,15 @@ class ProximityService : DaggerService(), ProximityDetector.ProximityListener {
                     windowManager.removeView(it)
                     overlay = null
                 }
-                updateKeyguardMode(false)
+                updateKeyguardMode(true)
             }
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun updateKeyguardMode(on: Boolean) {
+        // No-op on API 26+ where KeyguardLock is ignored; keep ref-counted for legacy.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) return
         synchronized(keyguardLock) {
             if (on) {
                 if (keyguardDisableCount.get() > 0) {
@@ -275,7 +273,7 @@ class ProximityService : DaggerService(), ProximityDetector.ProximityListener {
                     Uri.parse("package:$packageName")
                 ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             )
-            mainHandler.post { toast("AMOLED mode requires the permission for drawing over other apps / appear on top to be turned on") }
+            mainHandler.post { toast(getString(R.string.toast_amoled_overlay_permission)) }
         }
         return canDrawOverlays
     }
@@ -290,11 +288,17 @@ class ProximityService : DaggerService(), ProximityDetector.ProximityListener {
         const val INTENT_ACTION_START = "ss.proximityservice.START"
         const val INTENT_ACTION_STOP = "ss.proximityservice.STOP"
 
-        const val INTENT_NOTIFY_ACTIVE = "ss.proximityservice.ACTIVE"
-        const val INTENT_NOTIFY_INACTIVE = "ss.proximityservice.INACTIVE"
+        const val NOTIFICATION_ID = 1
 
-        private const val NOTIFICATION_ID = 1
-
+        @Volatile
         var isRunning = false
+            set(value) {
+                field = value
+                // Keep observable state in sync for Activities/Tiles.
+                // Direct field access from tests stays compatible.
+                if (ServiceState.running != value) {
+                    ServiceState.setRunning(value)
+                }
+            }
     }
 }

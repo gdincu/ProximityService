@@ -3,14 +3,18 @@ package ss.proximityservice.settings
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.Observer
 import com.google.common.truth.Truth.assertThat
+import org.junit.After
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito.*
 import ss.proximityservice.ProximityService
+import ss.proximityservice.R
 import ss.proximityservice.data.Alert
 import ss.proximityservice.data.AppStorage
 import ss.proximityservice.data.Event
 import ss.proximityservice.data.Mode
+import ss.proximityservice.data.ServiceState
 import ss.proximityservice.mock
 
 class SettingsViewModelTest {
@@ -18,11 +22,28 @@ class SettingsViewModelTest {
     @get:Rule
     val rule = InstantTaskExecutorRule()
 
-    val mockAppStorage: AppStorage = mock()
+    private lateinit var mockAppStorage: AppStorage
+
+    @Before
+    fun setUp() {
+        mockAppStorage = mock()
+        // Sane defaults for ViewModel init.
+        `when`(mockAppStorage.getInt(OPERATIONAL_MODE, Mode.DEFAULT.ordinal))
+            .thenReturn(Mode.DEFAULT.ordinal)
+        `when`(mockAppStorage.getInt(SCREEN_OFF_DELAY, 0)).thenReturn(0)
+        `when`(mockAppStorage.getBoolean(NOTIFICATION_DISMISS, true)).thenReturn(true)
+    }
+
+    @After
+    fun tearDown() {
+        ProximityService.isRunning = false
+        ServiceState.resetForTests()
+    }
 
     @Test
     fun `serviceState with false initial value`() {
         ProximityService.isRunning = false
+        ServiceState.resetForTests()
 
         val viewModel = SettingsViewModel(mock())
 
@@ -39,25 +60,25 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `updateState() to active results in observing true on serviceState`() {
+    fun `updateState() to true results in observing true on serviceState`() {
         val viewModel = SettingsViewModel(mock())
         val observer: Observer<Boolean> = mock()
         viewModel.serviceState.observeForever(observer)
         reset(observer)
 
-        viewModel.updateState(ProximityService.INTENT_NOTIFY_ACTIVE)
+        viewModel.updateState(true)
 
         verify(observer).onChanged(true)
     }
 
     @Test
-    fun `updateState() to inactive results in observing false on serviceState`() {
+    fun `updateState() to false results in observing false on serviceState`() {
         val viewModel = SettingsViewModel(mock())
         val observer: Observer<Boolean> = mock()
         viewModel.serviceState.observeForever(observer)
         reset(observer)
 
-        viewModel.updateState(ProximityService.INTENT_NOTIFY_INACTIVE)
+        viewModel.updateState(false)
 
         verify(observer).onChanged(false)
     }
@@ -65,6 +86,7 @@ class SettingsViewModelTest {
     @Test
     fun `getNextIntentAction() returns start action when service is not running`() {
         ProximityService.isRunning = false
+        ServiceState.resetForTests()
         val viewModel = SettingsViewModel(mock())
 
         assertThat(viewModel.getNextIntentAction()).isEqualTo(ProximityService.INTENT_ACTION_START)
@@ -79,12 +101,41 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `notification behavior initial value respects stored dismiss true`() {
+        `when`(mockAppStorage.getBoolean(NOTIFICATION_DISMISS, true)).thenReturn(true)
+
+        val viewModel = SettingsViewModel(mockAppStorage)
+
+        assertThat(viewModel.notificationBehaviorResId.value)
+            .isEqualTo(R.string.settings_notification_behavior_secondary_dismiss)
+    }
+
+    @Test
+    fun `notification behavior initial value respects stored dismiss false`() {
+        `when`(mockAppStorage.getBoolean(NOTIFICATION_DISMISS, true)).thenReturn(false)
+
+        val viewModel = SettingsViewModel(mockAppStorage)
+
+        assertThat(viewModel.notificationBehaviorResId.value)
+            .isEqualTo(R.string.settings_notification_behavior_secondary_retain)
+    }
+
+    @Test
     fun `screenOffDelayUpdate() should store the input progress Int`() {
         val viewModel = SettingsViewModel(mockAppStorage)
 
         viewModel.screenOffDelayUpdate(1)
 
         verify(mockAppStorage).put(SCREEN_OFF_DELAY, 1)
+    }
+
+    @Test
+    fun `screenOffDelayUpdate() clamps out-of-range values`() {
+        val viewModel = SettingsViewModel(mockAppStorage)
+
+        viewModel.screenOffDelayUpdate(99)
+
+        verify(mockAppStorage).put(SCREEN_OFF_DELAY, 6)
     }
 
     @Test

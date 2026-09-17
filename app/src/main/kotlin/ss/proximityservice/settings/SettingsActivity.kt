@@ -1,11 +1,7 @@
 package ss.proximityservice.settings
 
-import android.annotation.SuppressLint
 import android.app.ActivityManager
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Bundle
@@ -13,18 +9,14 @@ import android.view.Menu
 import android.view.MenuItem
 import android.widget.SeekBar
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.ViewModelProviders
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.google.android.gms.oss.licenses.OssLicensesMenuActivity
 import dagger.android.support.DaggerAppCompatActivity
-import kotlinx.android.synthetic.main.activity_settings.*
 import ss.proximityservice.ProximityService
-import ss.proximityservice.ProximityService.Companion.INTENT_NOTIFY_ACTIVE
-import ss.proximityservice.ProximityService.Companion.INTENT_NOTIFY_INACTIVE
 import ss.proximityservice.R
 import ss.proximityservice.data.EventObserver
+import ss.proximityservice.data.ServiceState
+import ss.proximityservice.databinding.ActivitySettingsBinding
 import javax.inject.Inject
 
 class SettingsActivity : DaggerAppCompatActivity() {
@@ -33,58 +25,54 @@ class SettingsActivity : DaggerAppCompatActivity() {
     lateinit var viewModelFactory: ViewModelProvider.Factory
 
     private lateinit var viewModel: SettingsViewModel
-
-    private val stateReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            viewModel.updateState(intent.action)
-        }
-    }
-
-    private val intentFilter = IntentFilter().apply {
-        addAction(INTENT_NOTIFY_ACTIVE)
-        addAction(INTENT_NOTIFY_INACTIVE)
-    }
+    private lateinit var binding: ActivitySettingsBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_settings)
-        setSupportActionBar(toolbar)
+        binding = ActivitySettingsBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        setSupportActionBar(binding.toolbar)
 
-        viewModel = ViewModelProviders.of(this, viewModelFactory)
+        viewModel = ViewModelProvider(this, viewModelFactory)
             .get(SettingsViewModel::class.java)
 
-        viewModel.serviceState.observe(this, Observer(::updateConditionCard))
+        viewModel.serviceState.observe(this, ::updateConditionCard)
+        ServiceState.isRunning.observe(this) { running ->
+            if (running != null) viewModel.updateState(running)
+        }
         viewModel.alert.observe(this, EventObserver { dialog -> dialog.show(this) })
-        viewModel.operationalModeResId.observe(this, Observer { resId ->
-            @SuppressLint("ResourceType")
-            operational_mode_secondary_text.text = getString(resId)
-        })
-        viewModel.notificationBehaviorResId.observe(this, Observer { resId ->
-            @SuppressLint("ResourceType")
-            notification_behavior_secondary_text.text = getString(resId)
-        })
-        viewModel.screenOffDelayResId.observe(this, Observer { resId ->
-            @SuppressLint("ResourceType")
-            screen_off_delay_secondary_text.text = getString(resId)
-        })
-        viewModel.screenOffDelayProgress.observe(this, Observer { progress ->
-            setting_screen_off_delay_seekbar.progress = progress
-        })
-
-        btn_service.setOnClickListener {
-            startService(
-                Intent(this, ProximityService::class.java)
-                    .setAction(viewModel.getNextIntentAction())
-            )
+        viewModel.operationalModeResId.observe(this) { resId ->
+            binding.operationalModeSecondaryText.text = getString(resId)
+        }
+        viewModel.notificationBehaviorResId.observe(this) { resId ->
+            binding.notificationBehaviorSecondaryText.text = getString(resId)
+        }
+        viewModel.screenOffDelayResId.observe(this) { resId ->
+            binding.screenOffDelaySecondaryText.text = getString(resId)
+        }
+        viewModel.screenOffDelayProgress.observe(this) { progress ->
+            if (binding.settingScreenOffDelaySeekbar.progress != progress) {
+                binding.settingScreenOffDelaySeekbar.progress = progress
+            }
         }
 
-        setting_operational_mode.setOnClickListener { viewModel.operationalModeClick() }
-        setting_notification_behavior.setOnClickListener { viewModel.notificationBehaviorClick() }
+        binding.btnService.setOnClickListener {
+            val intent = Intent(this, ProximityService::class.java)
+                .setAction(viewModel.getNextIntentAction())
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
+        }
 
-        setting_screen_off_delay_seekbar.setOnSeekBarChangeListener(object :
+        binding.settingOperationalMode.setOnClickListener { viewModel.operationalModeClick() }
+        binding.settingNotificationBehavior.setOnClickListener { viewModel.notificationBehaviorClick() }
+
+        binding.settingScreenOffDelaySeekbar.setOnSeekBarChangeListener(object :
             SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
-                viewModel.screenOffDelayProgress(progress)
+                if (fromUser) viewModel.screenOffDelayProgress(progress)
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar) {}
@@ -95,12 +83,12 @@ class SettingsActivity : DaggerAppCompatActivity() {
         })
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            val taskDescription = ActivityManager.TaskDescription(
-                getString(R.string.app_name),
-                BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher),
-                resources.getColor(R.color.primaryDark)
+            val icon = BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher)
+            val color = ContextCompat.getColor(this, R.color.primaryDark)
+            setTaskDescription(
+                ActivityManager.TaskDescription(getString(R.string.app_name), icon, color)
             )
-            setTaskDescription(taskDescription)
+            icon?.recycle()
         }
     }
 
@@ -119,22 +107,12 @@ class SettingsActivity : DaggerAppCompatActivity() {
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        LocalBroadcastManager.getInstance(this).registerReceiver(stateReceiver, intentFilter)
-    }
-
-    override fun onStop() {
-        super.onStop()
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(stateReceiver)
-    }
-
     private fun updateConditionCard(serviceState: Boolean) {
         val colorId = if (serviceState) R.color.accent else R.color.primaryLight
         val conditionTextId = if (serviceState) R.string.condition_active else R.string.condition_inactive
         val btnTextId = if (serviceState) R.string.button_off else R.string.button_on
-        condition_card.setBackgroundColor(ContextCompat.getColor(this, colorId))
-        tv_condition.text = getString(conditionTextId)
-        btn_service.text = getString(btnTextId)
+        binding.conditionCard.setBackgroundColor(ContextCompat.getColor(this, colorId))
+        binding.tvCondition.text = getString(conditionTextId)
+        binding.btnService.text = getString(btnTextId)
     }
 }
