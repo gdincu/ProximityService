@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- Required on API 33+ for the "stop and retain" notification (FGS notifications are exempt). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Required pre-O for TYPE_SYSTEM_ALERT overlay in AMOLED mode. O+ uses TYPE_APPLICATION_OVERLAY. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-feature

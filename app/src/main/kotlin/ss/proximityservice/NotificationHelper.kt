@@ -4,8 +4,10 @@ import android.app.*
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import ss.proximityservice.settings.SettingsActivity
 
 class NotificationHelper(context: Context) : ContextWrapper(context) {
@@ -25,6 +27,14 @@ class NotificationHelper(context: Context) : ContextWrapper(context) {
     }
 
     fun notify(id: Int, notification: Notification) {
+        // Posting (non-FGS) notifications throws SecurityException on API 33+
+        // without the runtime permission; skip silently if not granted.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
         manager.notify(id, notification)
     }
 
