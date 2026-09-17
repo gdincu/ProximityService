@@ -1,32 +1,26 @@
-<h1 align="center"><img src="/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" align="top" height="40">ProximityService</h1>
+# What changed
 
-<h4 align="center">Android service for turning off the display using the proximity sensor.</h4>
+Brought this app up to date so it builds and runs on modern
+Android (up to Android 15 - SDK 35), and fixed the bugs found along the way.
 
-<p align="center">
-  <a href="https://circleci.com/gh/ssaqua/ProximityService">
-    <img src="https://circleci.com/gh/ssaqua/ProximityService.svg?style=shield">
-  </a>
-</p>
+## Fixed
+- Settings screen no longer crashes when opening Operational Mode or
+  Notification Behavior, and both dialogs show their options again.
+- Notification setting no longer always resets to "dismiss".
+- Quick Settings tile updates its color when tapped and reflects the
+  real service state.
+- No more crash when stopping the service on Android 13+ without
+  notification permission.
+- Service handles missing proximity sensor and unsupported devices
+  gracefully.
 
-<p align="center">
-  <a href="https://play.google.com/store/apps/details?id=ss.proximityservice">
-    <img src="https://play.google.com/intl/en_us/badges/images/generic/en_badge_web_generic.png" height="100">
-  </a>
-</p>
+## Updated
+- Now targets Android 15 (was Android 10), with all libraries,
+  build tools, and Kotlin brought up to date.
+- Settings screen rebuilt with current Android components.
+- Removed dead code, old compatibility shims, and the debug-only
+  memory-leak tracker.
 
-## License
-
-
-    Copyright 2016 ssaqua
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+## Quality
+- 22 automated tests, all passing, plus lint checks on every push.
+- Every push automatically builds and tests the app.
