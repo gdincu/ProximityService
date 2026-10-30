@@ -1,6 +1,5 @@
 package ss.proximityservice
 
-import android.content.Intent
 import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
@@ -16,17 +15,16 @@ class ToggleTileService : TileService() {
 
     override fun onClick() {
         val currentlyRunning = ServiceState.running || ProximityService.isRunning
-        val activityClass = if (currentlyRunning) {
-            StopActivity::class.java
+        val action = if (currentlyRunning) {
+            ProximityService.INTENT_ACTION_STOP
         } else {
-            StartActivity::class.java
+            ProximityService.INTENT_ACTION_START
         }
         // Optimistic immediate feedback; corrected by runningObserver when the service confirms.
         setTileState(!currentlyRunning)
-        // Unlock and launch the toggle activity; tile state refreshes via runningObserver.
-        unlockAndRun {
-            startActivity(Intent(this, activityClass).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        }
+        // Start the service directly: no trampoline activity, so no BAL block
+        // on cold start and no unlock required for a no-UI toggle.
+        ServiceStarter.start(this, action)
     }
 
     override fun onTileAdded() {
